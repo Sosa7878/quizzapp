@@ -2,7 +2,7 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 const dns = require('dns');
-
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
 // 🔧 Fix Render-Supabase issue: Force IPv4
 dns.setDefaultResultOrder('ipv4first');
 
