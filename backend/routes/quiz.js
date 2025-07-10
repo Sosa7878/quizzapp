@@ -183,7 +183,7 @@ router.get('/results/:resultId', authMiddleware, async (req, res) => {
   }
 });
 
-// GET all results for a user (admin only)
+// ✅ FIXED: GET all results for a user (admin only)
 router.get('/results/user/:userId', authMiddleware, async (req, res) => {
   const { userId } = req.params;
 
@@ -193,7 +193,7 @@ router.get('/results/user/:userId', authMiddleware, async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT r.*, u.username FROM results r
+      `SELECT r.*, u.email AS username FROM results r
        JOIN users u ON r.user_id = u.id
        WHERE r.user_id = $1 ORDER BY r.id DESC`,
       [userId]
