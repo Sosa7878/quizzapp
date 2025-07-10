@@ -160,4 +160,114 @@ router.post('/questions/bulk', async (req, res) => {
     }
 
     if (![0, 1, 2, 3].includes(parseInt(correct))) {
-      errors.push(`Row ${i + 1}: Invalid co
+      errors.push(`Row ${i + 1}: Invalid correct answer '${correct}'`);
+      errorCount++;
+      continue;
+    }
+
+    const options = [optionA, optionB, optionC, optionD];
+
+    try {
+      await pool.query(
+        `INSERT INTO questions (question, options, correct, category) VALUES ($1, $2, $3, $4)`,
+        [question, JSON.stringify(options), parseInt(correct), category]
+      );
+      successCount++;
+    } catch (err) {
+      errors.push(`Row ${i + 1}: ${err.message}`);
+      errorCount++;
+    }
+  }
+
+  res.json({
+    message: `Bulk upload completed. ${successCount} added, ${errorCount} errors.`,
+    successCount,
+    errorCount,
+    errors,
+  });
+});
+
+// DELETE a question
+router.delete('/questions/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(`DELETE FROM questions WHERE id = $1`, [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+    res.json({ message: 'Question deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete question' });
+  }
+});
+
+// GET all notes
+router.get('/notes', async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM notes ORDER BY created_at DESC`);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to load notes' });
+  }
+});
+
+// POST add note
+router.post('/notes', async (req, res) => {
+  const { title, content, type } = req.body;
+
+  if (!title || !content || !['text', 'pdf'].includes(type)) {
+    return res.status(400).json({ message: 'Invalid input' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO notes (title, content, type) VALUES ($1, $2, $3) RETURNING id`,
+      [title, content, type]
+    );
+    res.status(201).json({ message: 'Note added', id: result.rows[0].id });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add note' });
+  }
+});
+
+// DELETE note
+router.delete('/notes/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(`DELETE FROM notes WHERE id = $1`, [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Note not found' });
+    }
+    res.json({ message: 'Note deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete note' });
+  }
+});
+
+// GET quiz statistics
+router.get('/stats', async (req, res) => {
+  const stats = {};
+  try {
+    const users = await pool.query(`SELECT COUNT(*) FROM users`);
+    stats.totalUsers = parseInt(users.rows[0].count);
+
+    const questions = await pool.query(`SELECT COUNT(*) FROM questions`);
+    stats.totalQuestions = parseInt(questions.rows[0].count);
+
+    const attempts = await pool.query(`SELECT COUNT(*) FROM results`);
+    stats.totalAttempts = parseInt(attempts.rows[0].count);
+
+    const categories = await pool.query(
+      `SELECT category, COUNT(*) as count FROM questions GROUP BY category`
+    );
+    stats.questionsByCategory = categories.rows;
+
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to get statistics' });
+  }
+});
+
+module.exports = router;
