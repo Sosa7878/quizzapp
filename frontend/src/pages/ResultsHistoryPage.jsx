@@ -90,33 +90,23 @@ function ResultsHistoryPage() {
                 <tbody>
                   {resultsHistory.map((result, index) => (
                     <tr key={result.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="px-4 py-3">
-                        {formatDate(result.created_at)}
+                      <td className="px-4 py-3">{formatDate(result.created_at)}</td>
+                      <td className="px-4 py-3 font-semibold">
+                        {result.score} / {result.total_questions}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="font-semibold">
-                          {result.score} / {result.total_questions}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`font-semibold ${
-                          result.percentage >= 70 ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                      <td className="px-4 py-3 font-semibold">
+                        <span className={result.percentage >= 70 ? "text-green-600" : "text-red-600"}>
                           {result.percentage}%
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          result.passed 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
+                          result.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
                           {result.passed ? 'PASSED' : 'FAILED'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        {formatTime(result.time_taken || 0)}
-                      </td>
+                      <td className="px-4 py-3">{formatTime(result.time_taken || 0)}</td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => viewResultDetails(result.id)}
@@ -162,4 +152,3 @@ function ResultsHistoryPage() {
 }
 
 export default ResultsHistoryPage;
-
