@@ -1,67 +1,58 @@
-const express = require("express");
-const db = require("../db");
-const authMiddleware = require("../middleware/auth");
+const express = require('express');
+const pool = require('../db'); // PostgreSQL pool
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
 // GET quiz questions with random selection based on categories
-router.get("/quiz", authMiddleware, (req, res) => {
-  // Get questions by category
-  const getQuestionsByCategory = (category, limit) => {
-    return new Promise((resolve, reject) => {
-      db.all(
-        `SELECT * FROM questions WHERE category = ? ORDER BY RANDOM() LIMIT ?`,
-        [category, limit],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
+router.get('/quiz', authMiddleware, async (req, res) => {
+  try {
+    const getQuestionsByCategory = async (category, limit) => {
+      const result = await pool.query(
+        'SELECT * FROM questions WHERE category = $1 ORDER BY RANDOM() LIMIT $2',
+        [category, limit]
       );
-    });
-  };
+      return result.rows;
+    };
 
-  Promise.all([
-    getQuestionsByCategory('historical', 30), // 30% historical/grammatical
-    getQuestionsByCategory('math', 30),       // 30% math
-    getQuestionsByCategory('logical', 40)     // 40% logical
-  ])
-  .then(([historical, math, logical]) => {
-    // Combine all questions and shuffle them
+    const [historical, math, logical] = await Promise.all([
+      getQuestionsByCategory('historical', 30),
+      getQuestionsByCategory('math', 30),
+      getQuestionsByCategory('logical', 40),
+    ]);
+
     const allQuestions = [...historical, ...math, ...logical];
-    
-    // Shuffle the combined array
+
+    // Shuffle
     for (let i = allQuestions.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
     }
 
-    // Format questions (parse options JSON)
     const formatted = allQuestions.map((q) => ({
       ...q,
       options: JSON.parse(q.options),
     }));
 
     res.json(formatted);
-  })
-  .catch(err => {
-    console.error("Error selecting questions:", err);
-    res.status(500).json({ message: "Failed to load questions." });
-  });
+  } catch (err) {
+    console.error('Error selecting questions:', err);
+    res.status(500).json({ message: 'Failed to load questions.' });
+  }
 });
 
 // POST submit quiz
-router.post("/quiz/submit", authMiddleware, (req, res) => {
+router.post('/quiz/submit', authMiddleware, async (req, res) => {
   const { answers, questions, timeTaken } = req.body;
   const userId = req.user.id;
 
   if (!answers || !questions) {
-    return res.status(400).json({ message: "Missing answers or questions data." });
+    return res.status(400).json({ message: 'Missing answers or questions data.' });
   }
 
   let score = 0;
   const totalQuestions = questions.length;
-  
-  // Calculate score - 1 point per correct answer
+
   for (let i = 0; i < totalQuestions; i++) {
     if (answers[i] !== -1 && parseInt(questions[i].correct) === parseInt(answers[i])) {
       score++;
@@ -69,160 +60,155 @@ router.post("/quiz/submit", authMiddleware, (req, res) => {
   }
 
   const percentage = Math.round((score / totalQuestions) * 100);
-  const passed = percentage >= 70; // 70% threshold to pass
+  const passed = percentage >= 70;
   const timeUsed = timeTaken || 0;
 
-  // Save result to database
-  db.run(
-    `INSERT INTO results (user_id, answers, score, total_questions, percentage, passed, time_taken, created_at) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-    [userId, JSON.stringify(answers), score, totalQuestions, percentage, passed ? 1 : 0, timeUsed],
-    function (err) {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Failed to save results." });
-      }
+  try {
+    const result = await pool.query(
+      `INSERT INTO results (user_id, answers, score, total_questions, percentage, passed, time_taken, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       RETURNING id`,
+      [userId, JSON.stringify(answers), score, totalQuestions, percentage, passed, timeUsed]
+    );
 
-      // Return detailed results
-      res.json({ 
-        resultId: this.lastID,
-        score,
-        totalQuestions,
-        percentage,
-        passed,
-        timeTaken: timeUsed,
-        message: passed ? "Urime! Ju kaluat testin!" : "Nuk arritët të kaloni testin këtë herë. Vazhdoni të studijoni!",
-        answers,
-        questions
-      });
-    }
-  );
+    res.json({
+      resultId: result.rows[0].id,
+      score,
+      totalQuestions,
+      percentage,
+      passed,
+      timeTaken: timeUsed,
+      message: passed
+        ? 'Urime! Ju kaluat testin!'
+        : 'Nuk arritët të kaloni testin këtë herë. Vazhdoni të studijoni!',
+      answers,
+      questions,
+    });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ message: 'Failed to save results.' });
+  }
 });
 
 // GET latest quiz result
-router.get("/results", authMiddleware, (req, res) => {
+router.get('/results', authMiddleware, async (req, res) => {
   const userId = req.user.id;
 
-  db.get(
-    `SELECT * FROM results WHERE user_id = ? ORDER BY id DESC LIMIT 1`, 
-    [userId], 
-    (err, result) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Failed to load results." });
-      }
+  try {
+    const result = await pool.query(
+      `SELECT * FROM results WHERE user_id = $1 ORDER BY id DESC LIMIT 1`,
+      [userId]
+    );
 
-      if (!result) {
-        return res.status(404).json({ message: "No results found." });
-      }
-
-      // Parse the stored answers
-      const parsedAnswers = JSON.parse(result.answers);
-      
-      res.json({
-        resultId: result.id,
-        score: result.score,
-        totalQuestions: result.total_questions,
-        percentage: result.percentage,
-        passed: result.passed === 1,
-        timeTaken: result.time_taken,
-        answers: parsedAnswers,
-        createdAt: result.created_at,
-        message: result.passed === 1 ? "Urime! Ju kaluat testin!" : "Nuk arritët të kaloni testin këtë herë. Vazhdoni të studijoni!"
-      });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'No results found.' });
     }
-  );
+
+    const r = result.rows[0];
+    res.json({
+      resultId: r.id,
+      score: r.score,
+      totalQuestions: r.total_questions,
+      percentage: r.percentage,
+      passed: r.passed,
+      timeTaken: r.time_taken,
+      answers: JSON.parse(r.answers),
+      createdAt: r.created_at,
+      message: r.passed
+        ? 'Urime! Ju kaluat testin!'
+        : 'Nuk arritët të kaloni testin këtë herë. Vazhdoni të studijoni!',
+    });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ message: 'Failed to load results.' });
+  }
 });
 
 // GET all results history for current user
-router.get("/results/history", authMiddleware, (req, res) => {
+router.get('/results/history', authMiddleware, async (req, res) => {
   const userId = req.user.id;
 
-  db.all(
-    `SELECT id, score, total_questions, percentage, passed, time_taken, created_at 
-     FROM results WHERE user_id = ? ORDER BY id DESC`,
-    [userId],
-    (err, results) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Failed to load results history." });
-      }
+  try {
+    const result = await pool.query(
+      `SELECT id, score, total_questions, percentage, passed, time_taken, created_at 
+       FROM results WHERE user_id = $1 ORDER BY id DESC`,
+      [userId]
+    );
 
-      const formattedResults = results.map(result => ({
-        ...result,
-        passed: result.passed === 1,
-        message: result.passed === 1 ? "PASSED" : "FAILED"
-      }));
+    const formatted = result.rows.map((r) => ({
+      ...r,
+      message: r.passed ? 'PASSED' : 'FAILED',
+    }));
 
-      res.json(formattedResults);
-    }
-  );
+    res.json(formatted);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ message: 'Failed to load results history.' });
+  }
 });
 
 // GET specific result details
-router.get("/results/:resultId", authMiddleware, (req, res) => {
+router.get('/results/:resultId', authMiddleware, async (req, res) => {
   const { resultId } = req.params;
   const userId = req.user.id;
 
-  db.get(
-    `SELECT * FROM results WHERE id = ? AND user_id = ?`, 
-    [resultId, userId], 
-    (err, result) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Failed to load result details." });
-      }
+  try {
+    const result = await pool.query(
+      `SELECT * FROM results WHERE id = $1 AND user_id = $2`,
+      [resultId, userId]
+    );
 
-      if (!result) {
-        return res.status(404).json({ message: "Result not found." });
-      }
-
-      const parsedAnswers = JSON.parse(result.answers);
-      
-      res.json({
-        resultId: result.id,
-        score: result.score,
-        totalQuestions: result.total_questions,
-        percentage: result.percentage,
-        passed: result.passed === 1,
-        timeTaken: result.time_taken,
-        answers: parsedAnswers,
-        createdAt: result.created_at,
-        message: result.passed === 1 ? "Urime! Ju kaluat testin!" : "Nuk arritët të kaloni testin këtë herë. Vazhdoni të studijoni!"
-      });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Result not found.' });
     }
-  );
+
+    const r = result.rows[0];
+
+    res.json({
+      resultId: r.id,
+      score: r.score,
+      totalQuestions: r.total_questions,
+      percentage: r.percentage,
+      passed: r.passed,
+      timeTaken: r.time_taken,
+      answers: JSON.parse(r.answers),
+      createdAt: r.created_at,
+      message: r.passed
+        ? 'Urime! Ju kaluat testin!'
+        : 'Nuk arritët të kaloni testin këtë herë. Vazhdoni të studijoni!',
+    });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ message: 'Failed to load result details.' });
+  }
 });
 
-// GET all results for a user (for admin to view user history)
-router.get("/results/user/:userId", authMiddleware, (req, res) => {
+// GET all results for a user (admin only)
+router.get('/results/user/:userId', authMiddleware, async (req, res) => {
   const { userId } = req.params;
-  
-  // Check if user is admin
+
   if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: "Access denied. Admin only." });
+    return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
 
-  db.all(
-    `SELECT r.*, u.name, u.email FROM results r 
-     JOIN users u ON r.user_id = u.id 
-     WHERE r.user_id = ? ORDER BY r.id DESC`,
-    [userId],
-    (err, results) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Failed to load user results." });
-      }
+  try {
+    const result = await pool.query(
+      `SELECT r.*, u.username FROM results r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.user_id = $1 ORDER BY r.id DESC`,
+      [userId]
+    );
 
-      const formattedResults = results.map(result => ({
-        ...result,
-        passed: result.passed === 1
-      }));
+    const formatted = result.rows.map((r) => ({
+      ...r,
+      passed: r.passed,
+    }));
 
-      res.json(formattedResults);
-    }
-  );
+    res.json(formatted);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ message: 'Failed to load user results.' });
+  }
 });
 
 module.exports = router;
-
