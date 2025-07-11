@@ -16,24 +16,24 @@ const requireAdmin = (req, res, next) => {
 router.use(authMiddleware, requireAdmin);
 
 // GET all users
-router.get('/users', async (req, res) => {
+router.get("/users", async (req, res) => {
   try {
     const result = await pool.query(`SELECT id, name, email, role FROM users`);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to load users' });
+    res.status(500).json({ message: "Failed to load users" });
   }
 });
 
 // POST add a new user
-router.post('/users', async (req, res) => {
+router.post("/users", async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password || !role) {
-    return res.status(400).json({ message: 'Name, email, password, and role are required' });
+    return res.status(400).json({ message: "Name, email, password, and role are required" });
   }
 
-  if (!['admin', 'user'].includes(role)) {
-    return res.status(400).json({ message: 'Invalid role' });
+  if (!["admin", "user"].includes(role)) {
+    return res.status(400).json({ message: "Invalid role" });
   }
 
   try {
@@ -42,101 +42,101 @@ router.post('/users', async (req, res) => {
       `INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id`,
       [name, email, hashedPassword, role]
     );
-    res.status(201).json({ message: 'User created', id: result.rows[0].id });
+    res.status(201).json({ message: "User created", id: result.rows[0].id });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to create user' });
+    res.status(500).json({ message: "Failed to create user" });
   }
 });
 
 // DELETE a user by ID
-router.delete('/users/:id', async (req, res) => {
+router.delete("/users/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
     const userCheck = await pool.query(`SELECT role FROM users WHERE id = $1`, [id]);
     if (userCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
-    if (userCheck.rows[0].role === 'admin') {
-      return res.status(403).json({ message: 'Cannot delete admin users' });
+    if (userCheck.rows[0].role === "admin") {
+      return res.status(403).json({ message: "Cannot delete admin users" });
     }
 
     const result = await pool.query(`DELETE FROM users WHERE id = $1`, [id]);
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
-    res.json({ message: 'User deleted successfully' });
+    res.json({ message: "User deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to delete user' });
+    res.status(500).json({ message: "Failed to delete user" });
   }
 });
 
 // GET all questions
-router.get('/questions', async (req, res) => {
+router.get("/questions", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM questions ORDER BY category, id`);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to load questions' });
+    res.status(500).json({ message: "Failed to load questions" });
   }
 });
 
 // POST add question
-router.post('/questions', async (req, res) => {
+router.post("/questions", async (req, res) => {
   const { question, options, correct, category } = req.body;
 
   if (!question || !options || correct === undefined || !category) {
-    return res.status(400).json({ message: 'All fields required' });
+    return res.status(400).json({ message: "All fields required" });
   }
 
-  if (!['historical', 'math', 'logical'].includes(category)) {
-    return res.status(400).json({ message: 'Invalid category' });
+  if (!["historical", "math", "logical"].includes(category)) {
+    return res.status(400).json({ message: "Invalid category" });
   }
 
   try {
     const result = await pool.query(
       `INSERT INTO questions (question, options, correct, category) VALUES ($1, $2, $3, $4) RETURNING id`,
-      [question, JSON.stringify(options), correct, category]
+      [question, options, correct, category]
     );
-    res.status(201).json({ message: 'Question added', id: result.rows[0].id });
+    res.status(201).json({ message: "Question added", id: result.rows[0].id });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to add question' });
+    res.status(500).json({ message: "Failed to add question" });
   }
 });
 
 // PUT update question
-router.put('/questions/:id', async (req, res) => {
+router.put("/questions/:id", async (req, res) => {
   const { id } = req.params;
   const { question, options, correct, category } = req.body;
 
   if (!question || !options || correct === undefined || !category) {
-    return res.status(400).json({ message: 'All fields required' });
+    return res.status(400).json({ message: "All fields required" });
   }
 
-  if (!['historical', 'math', 'logical'].includes(category)) {
-    return res.status(400).json({ message: 'Invalid category' });
+  if (!["historical", "math", "logical"].includes(category)) {
+    return res.status(400).json({ message: "Invalid category" });
   }
 
   try {
     const result = await pool.query(
       `UPDATE questions SET question = $1, options = $2, correct = $3, category = $4 WHERE id = $5`,
-      [question, JSON.stringify(options), correct, category, id]
+      [question, options, correct, category, id]
     );
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Question not found' });
+      return res.status(404).json({ message: "Question not found" });
     }
-    res.json({ message: 'Question updated successfully' });
+    res.json({ message: "Question updated successfully" });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to update question' });
+    res.status(500).json({ message: "Failed to update question" });
   }
 });
 
 // POST bulk upload
-router.post('/questions/bulk', async (req, res) => {
+router.post("/questions/bulk", async (req, res) => {
   const { questions } = req.body;
 
   if (!questions || !Array.isArray(questions)) {
-    return res.status(400).json({ message: 'Questions array is required' });
+    return res.status(400).json({ message: "Questions array is required" });
   }
 
   let successCount = 0;
@@ -153,7 +153,7 @@ router.post('/questions/bulk', async (req, res) => {
       continue;
     }
 
-    if (!['historical', 'math', 'logical'].includes(category)) {
+    if (!["historical", "math", "logical"].includes(category)) {
       errors.push(`Row ${i + 1}: Invalid category '${category}'`);
       errorCount++;
       continue;
@@ -170,7 +170,7 @@ router.post('/questions/bulk', async (req, res) => {
     try {
       await pool.query(
         `INSERT INTO questions (question, options, correct, category) VALUES ($1, $2, $3, $4)`,
-        [question, JSON.stringify(options), parseInt(correct), category]
+        [question, options, parseInt(correct), category]
       );
       successCount++;
     } catch (err) {
@@ -188,36 +188,36 @@ router.post('/questions/bulk', async (req, res) => {
 });
 
 // DELETE a question
-router.delete('/questions/:id', async (req, res) => {
+router.delete("/questions/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
     const result = await pool.query(`DELETE FROM questions WHERE id = $1`, [id]);
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Question not found' });
+      return res.status(404).json({ message: "Question not found" });
     }
-    res.json({ message: 'Question deleted successfully' });
+    res.json({ message: "Question deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to delete question' });
+    res.status(500).json({ message: "Failed to delete question" });
   }
 });
 
 // GET all notes
-router.get('/notes', async (req, res) => {
+router.get("/notes", async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM notes ORDER BY created_at DESC`);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to load notes' });
+    res.status(500).json({ message: "Failed to load notes" });
   }
 });
 
 // POST add note
-router.post('/notes', async (req, res) => {
+router.post("/notes", async (req, res) => {
   const { title, content, type } = req.body;
 
-  if (!title || !content || !['text', 'pdf'].includes(type)) {
-    return res.status(400).json({ message: 'Invalid input' });
+  if (!title || !content || !["text", "pdf"].includes(type)) {
+    return res.status(400).json({ message: "Invalid input" });
   }
 
   try {
@@ -225,29 +225,29 @@ router.post('/notes', async (req, res) => {
       `INSERT INTO notes (title, content, type) VALUES ($1, $2, $3) RETURNING id`,
       [title, content, type]
     );
-    res.status(201).json({ message: 'Note added', id: result.rows[0].id });
+    res.status(201).json({ message: "Note added", id: result.rows[0].id });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to add note' });
+    res.status(500).json({ message: "Failed to add note" });
   }
 });
 
 // DELETE note
-router.delete('/notes/:id', async (req, res) => {
+router.delete("/notes/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
     const result = await pool.query(`DELETE FROM notes WHERE id = $1`, [id]);
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Note not found' });
+      return res.status(404).json({ message: "Note not found" });
     }
-    res.json({ message: 'Note deleted successfully' });
+    res.json({ message: "Note deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to delete note' });
+    res.status(500).json({ message: "Failed to delete note" });
   }
 });
 
 // GET quiz statistics
-router.get('/stats', async (req, res) => {
+router.get("/stats", async (req, res) => {
   const stats = {};
   try {
     const users = await pool.query(`SELECT COUNT(*) FROM users`);
@@ -266,7 +266,7 @@ router.get('/stats', async (req, res) => {
 
     res.json(stats);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to get statistics' });
+    res.status(500).json({ message: "Failed to get statistics" });
   }
 });
 
