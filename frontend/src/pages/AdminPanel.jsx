@@ -53,6 +53,7 @@ function AdminPanel() {
     loadUsers();
     loadQuestions();
     loadNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadModules = async () => {

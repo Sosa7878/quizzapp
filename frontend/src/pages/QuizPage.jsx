@@ -37,6 +37,7 @@ function QuizPage() {
       setModulesLoading(false);
     };
     loadModules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load questions after module selection
@@ -81,7 +82,7 @@ function QuizPage() {
       setTimeLeft(prev => prev - 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, quizStarted]);
+  }, [timeLeft, quizStarted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);

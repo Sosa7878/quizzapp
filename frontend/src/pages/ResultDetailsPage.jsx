@@ -12,6 +12,7 @@ function ResultDetailsPage() {
 
   useEffect(() => {
     loadResultDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultId]);
 
   const loadResultDetails = async () => {

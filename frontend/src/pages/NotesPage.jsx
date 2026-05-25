@@ -11,6 +11,7 @@ function NotesPage() {
 
   useEffect(() => {
     loadNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadNotes = async () => {
