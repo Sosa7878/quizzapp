@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import API_BASE_URL from "../config";
 
 function ResultDetailsPage() {
   const { resultId } = useParams();
@@ -16,17 +17,18 @@ function ResultDetailsPage() {
   const loadResultDetails = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`https://quizzapp-ep6o.onrender.com/api/results/${resultId}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/results/${resultId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       setResultData(response.data);
       
       // Load questions for detailed review
-      const questionsResponse = await axios.get("https://quizzapp-ep6o.onrender.com/api/quiz", {
+      const questionsResponse = await axios.get(`${API_BASE_URL}/api/quiz`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setQuestions(questionsResponse.data.slice(0, response.data.totalQuestions));
+      const qs = Array.isArray(questionsResponse.data) ? questionsResponse.data : (questionsResponse.data.questions || []);
+      setQuestions(qs.slice(0, response.data.totalQuestions));
       setLoading(false);
     } catch (error) {
       console.error("Failed to load result details:", error);
@@ -49,7 +51,7 @@ function ResultDetailsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-xl">Loading result details...</div>
+        <div className="text-xl">Duke ngarkuar detajet...</div>
       </div>
     );
   }
@@ -58,7 +60,7 @@ function ResultDetailsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="bg-white p-6 rounded shadow-md text-center">
-          <p>Result not found.</p>
+          <p>Rezultati nuk u gjet.</p>
           <button
             onClick={() => navigate("/results/history")}
             className="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
@@ -76,17 +78,17 @@ function ResultDetailsPage() {
         {/* Results Summary */}
         <div className="bg-white p-8 rounded shadow-md mb-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Quiz Result Details</h1>
+            <h1 className="text-3xl font-bold">Detajet e Rezultatit</h1>
             <button
               onClick={() => navigate("/results/history")}
               className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
             >
-              Back to History
+            Kthehu në Historik
             </button>
           </div>
           
           <div className="text-center mb-6">
-            <p className="text-gray-600">Completed on {formatDate(resultData.createdAt)}</p>
+            <p className="text-gray-600">Përfunduar më {formatDate(resultData.createdAt)}</p>
           </div>
           
           <div className={`text-center p-6 rounded-lg mb-6 ${
@@ -95,7 +97,7 @@ function ResultDetailsPage() {
             <h2 className={`text-2xl font-bold mb-2 ${
               resultData.passed ? 'text-green-700' : 'text-red-700'
             }`}>
-              {resultData.passed ? '🎉 PASSED' : '😔 FAILED'}
+              {resultData.passed ? '🎉 KALUAR' : '😔 DËSHTUAR'}
             </h2>
             <p className={`text-lg ${
               resultData.passed ? 'text-green-600' : 'text-red-600'
@@ -106,32 +108,32 @@ function ResultDetailsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-blue-700">Score</h3>
+              <h3 className="text-lg font-semibold text-blue-700">Rezultati</h3>
               <p className="text-2xl font-bold text-blue-800">
                 {resultData.score} / {resultData.totalQuestions}
               </p>
             </div>
             
             <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-purple-700">Percentage</h3>
+              <h3 className="text-lg font-semibold text-purple-700">Përqindja</h3>
               <p className="text-2xl font-bold text-purple-800">
                 {resultData.percentage}%
               </p>
             </div>
             
             <div className="text-center p-4 bg-yellow-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-yellow-700">Time Taken</h3>
+              <h3 className="text-lg font-semibold text-yellow-700">Koha e Shpenzuar</h3>
               <p className="text-2xl font-bold text-yellow-800">
                 {formatTime(resultData.timeTaken || 0)}
               </p>
             </div>
             
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-700">Status</h3>
+              <h3 className="text-lg font-semibold text-gray-700">Statusi</h3>
               <p className={`text-2xl font-bold ${
                 resultData.passed ? 'text-green-600' : 'text-red-600'
               }`}>
-                {resultData.passed ? 'PASSED' : 'FAILED'}
+                {resultData.passed ? 'KALUAR' : 'DËSHTUAR'}
               </p>
             </div>
           </div>
@@ -140,7 +142,7 @@ function ResultDetailsPage() {
         {/* Detailed Question Review */}
         {questions.length > 0 && resultData && resultData.answers && (
           <div className="bg-white p-6 rounded shadow-md">
-            <h2 className="text-2xl font-bold mb-6">Question Review</h2>
+            <h2 className="text-2xl font-bold mb-6">Rishikimi i Pyetjeve</h2>
             
             {questions.map((question, idx) => {
               const userAnswer = resultData.answers[idx];
@@ -165,7 +167,7 @@ function ResultDetailsPage() {
                       wasAnswered ? "bg-red-200 text-red-800" : 
                       "bg-gray-200 text-gray-800"
                     }`}>
-                      {isCorrect ? "✓ Correct" : wasAnswered ? "✗ Incorrect" : "⊘ Not Answered"}
+                      {isCorrect ? "✓ Saktë" : wasAnswered ? "✗ Gabim" : "⊘ Pa Përgjigje"}
                     </span>
                   </div>
                   
@@ -184,10 +186,10 @@ function ResultDetailsPage() {
                         </span>
                         {option}
                         {optIdx === parseInt(question.correct) && (
-                          <span className="ml-2 text-green-600 font-semibold">✓ Correct</span>
+                          <span className="ml-2 text-green-600 font-semibold">✓ Saktë</span>
                         )}
                         {optIdx === userAnswer && optIdx !== parseInt(question.correct) && (
-                          <span className="ml-2 text-red-600 font-semibold">✗ Your Answer</span>
+                          <span className="ml-2 text-red-600 font-semibold">✗ Përgjigja Juaj</span>
                         )}
                       </div>
                     ))}
@@ -195,7 +197,7 @@ function ResultDetailsPage() {
                   
                   {!wasAnswered && (
                     <p className="text-gray-600 italic">
-                      You did not answer this question.
+                      Nuk iu përgjigjët kësaj pyetjeje.
                     </p>
                   )}
                 </div>
@@ -210,13 +212,13 @@ function ResultDetailsPage() {
             onClick={() => navigate("/results/history")}
             className="bg-blue-600 text-white py-3 px-6 rounded hover:bg-blue-700 font-semibold"
           >
-            Back to History
+            Kthehu në Historik
           </button>
           <button
             onClick={() => navigate("/quiz")}
             className="bg-green-600 text-white py-3 px-6 rounded hover:bg-green-700 font-semibold"
           >
-            Take Another Quiz
+            Bëj Një Kuiz Tjetër
           </button>
         </div>
       </div>

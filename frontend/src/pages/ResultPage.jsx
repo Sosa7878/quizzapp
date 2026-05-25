@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import API_BASE_URL from "../config";
 
 function ResultPage() {
   const location = useLocation();
@@ -26,7 +27,7 @@ function ResultPage() {
   const loadLatestResult = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("https://quizzapp-ep6o.onrender.com/api/quiz/results", {
+      const response = await axios.get(`${API_BASE_URL}/api/quiz/results`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -37,10 +38,11 @@ function ResultPage() {
         // For displaying questions, we need to get them from the quiz endpoint
         // In a production app, you'd store the specific questions used in each quiz
         try {
-          const questionsResponse = await axios.get("https://quizzapp-ep6o.onrender.com/api/quiz/quiz", {
+          const questionsResponse = await axios.get(`${API_BASE_URL}/api/quiz`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          setQuestions(questionsResponse.data.slice(0, response.data.totalQuestions));
+          const qs = Array.isArray(questionsResponse.data) ? questionsResponse.data : (questionsResponse.data.questions || []);
+          setQuestions(qs.slice(0, response.data.totalQuestions));
         } catch (questionsError) {
           console.error("Failed to load questions:", questionsError);
           // Set empty questions array if questions can't be loaded
@@ -66,7 +68,7 @@ function ResultPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-xl">Loading results...</div>
+        <div className="text-xl">Duke ngarkuar rezultatet...</div>
       </div>
     );
   }
@@ -75,12 +77,12 @@ function ResultPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="bg-white p-6 rounded shadow-md text-center">
-          <p>No results to display. Please complete a quiz first.</p>
+          <p>Nuk ka rezultate për të shfaqur. Plotësoni fillimisht një kuiz.</p>
           <button
             onClick={() => navigate("/dashboard")}
             className="mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
           >
-            Go to Dashboard
+            Shko në Dashboard
           </button>
         </div>
       </div>
@@ -92,7 +94,7 @@ function ResultPage() {
       <div className="max-w-4xl mx-auto">
         {/* Results Summary */}
         <div className="bg-white p-8 rounded shadow-md mb-6">
-          <h1 className="text-3xl font-bold text-center mb-6">Quiz Results</h1>
+          <h1 className="text-3xl font-bold text-center mb-6">Rezultatet e Kuizit</h1>
           
           <div className={`text-center p-6 rounded-lg mb-6 ${
             resultData.passed ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'
@@ -111,21 +113,21 @@ function ResultPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-blue-700">Score</h3>
+              <h3 className="text-lg font-semibold text-blue-700">Rezultati</h3>
               <p className="text-2xl font-bold text-blue-800">
                 {resultData.score} / {resultData.totalQuestions}
               </p>
             </div>
             
             <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-purple-700">Percentage</h3>
+              <h3 className="text-lg font-semibold text-purple-700">Përqindja</h3>
               <p className="text-2xl font-bold text-purple-800">
                 {resultData.percentage}%
               </p>
             </div>
             
             <div className="text-center p-4 bg-yellow-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-yellow-700">Time Taken</h3>
+              <h3 className="text-lg font-semibold text-yellow-700">Koha e Shpenzuar</h3>
               <p className="text-2xl font-bold text-yellow-800">
                 {formatTime(resultData.timeTaken || 0)}
               </p>
@@ -142,15 +144,15 @@ function ResultPage() {
           </div>
 
           <div className="text-center text-sm text-gray-600 mb-4">
-            <p>Passing Score: 70% or higher</p>
-            <p>Each question is worth 1 point</p>
+            <p>Pikët për kalim: 70% ose më shumë</p>
+            <p>Çdo pyetje vlen 1 pikë</p>
           </div>
         </div>
 
         {/* Detailed Question Review */}
         {questions && questions.length > 0 && (
           <div className="bg-white p-6 rounded shadow-md">
-            <h2 className="text-2xl font-bold mb-6">Question Review</h2>
+            <h2 className="text-2xl font-bold mb-6">Rishikimi i Pyetjeve</h2>
             
             {questions.map((question, idx) => {
               const userAnswer = answers && answers[idx] !== undefined ? answers[idx] : -1;
@@ -175,7 +177,7 @@ function ResultPage() {
                       wasAnswered ? "bg-red-200 text-red-800" : 
                       "bg-gray-200 text-gray-800"
                     }`}>
-                      {isCorrect ? "✓ Correct" : wasAnswered ? "✗ Incorrect" : "⊘ Not Answered"}
+                      {isCorrect ? "✓ Saktë" : wasAnswered ? "✗ Gabim" : "⊘ Pa Përgjigje"}
                     </span>
                   </div>
                   
@@ -194,10 +196,10 @@ function ResultPage() {
                         </span>
                         {option}
                         {optIdx === parseInt(question.correct) && (
-                          <span className="ml-2 text-green-600 font-semibold">✓ Correct</span>
+                          <span className="ml-2 text-green-600 font-semibold">✓ Saktë</span>
                         )}
                         {optIdx === userAnswer && optIdx !== parseInt(question.correct) && (
-                          <span className="ml-2 text-red-600 font-semibold">✗ Your Answer</span>
+                          <span className="ml-2 text-red-600 font-semibold">✗ Përgjigja Juaj</span>
                         )}
                       </div>
                     ))}
@@ -205,7 +207,7 @@ function ResultPage() {
                   
                   {!wasAnswered && (
                     <p className="text-gray-600 italic">
-                      You did not answer this question.
+                      Nuk iu përgjigjët kësaj pyetjeje.
                     </p>
                   )}
                 </div>
@@ -220,19 +222,19 @@ function ResultPage() {
             onClick={() => navigate("/dashboard")}
             className="bg-blue-600 text-white py-3 px-6 rounded hover:bg-blue-700 font-semibold"
           >
-            Back to Dashboard
+            Kthehu në Dashboard
           </button>
           <button
             onClick={() => navigate("/results/history")}
             className="bg-purple-600 text-white py-3 px-6 rounded hover:bg-purple-700 font-semibold"
           >
-            View History
+            Shiko Historikun
           </button>
           <button
             onClick={() => navigate("/quiz")}
             className="bg-green-600 text-white py-3 px-6 rounded hover:bg-green-700 font-semibold"
           >
-            Take Another Quiz
+            Bëj Një Kuiz Tjetër
           </button>
         </div>
       </div>

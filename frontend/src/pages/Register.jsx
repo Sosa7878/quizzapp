@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import API_BASE_URL from "../config";
 
 function Register() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ function Register() {
     setError(""); // Clear previous errors
 
     try {
-      const response = await axios.post("https://quizzapp-ep6o.onrender.com/api/signup", {
+      const response = await axios.post(`${API_BASE_URL}/api/signup`, {
         name: name,
         email: email,
         password,
@@ -23,7 +24,7 @@ function Register() {
       console.log("Registration successful:", response.data);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      setError(err.response?.data?.message || "Regjistrimi dështoi");
       console.error("Registration error:", err);
     }
   };
@@ -34,11 +35,11 @@ function Register() {
         onSubmit={handleRegister}
         className="bg-white p-6 rounded shadow-md w-full max-w-sm"
       >
-        <h2 className="text-2xl font-bold mb-4 text-center">Register</h2>
+        <h2 className="text-2xl font-bold mb-4 text-center">Regjistrohu</h2>
 
         <input
           type="text"
-          placeholder="Full Name"
+          placeholder="Emri i Plotë"
           className="w-full mb-3 p-2 border border-gray-300 rounded"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -56,7 +57,7 @@ function Register() {
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Fjalëkalimi"
           className="w-full mb-3 p-2 border border-gray-300 rounded"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -69,16 +70,16 @@ function Register() {
           type="submit"
           className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
         >
-          Register
+          Regjistrohu
         </button>
 
         <p className="text-sm mt-4 text-center">
-          Already have an account?{" "}
+          Keni tashmë një llogari?{" "}
           <span
             className="text-blue-600 hover:underline cursor-pointer"
             onClick={() => navigate("/")}
           >
-            Login
+            Kyçu
           </span>
         </p>
       </form>

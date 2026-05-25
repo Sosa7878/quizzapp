@@ -7,7 +7,7 @@ const ThemeToggle = () => {
   return (
     <div className="flex items-center space-x-3">
       <span className={`text-sm font-medium ${isModern ? 'text-gray-300' : 'text-gray-600'}`}>
-        Classic
+        Klasik
       </span>
       <button
         onClick={toggleTheme}

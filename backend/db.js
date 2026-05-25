@@ -19,11 +19,45 @@ const pool = new Pool({
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
+        email TEXT UNIQUE,
         password TEXT NOT NULL,
-        role TEXT NOT NULL
+        role TEXT NOT NULL,
+        username TEXT UNIQUE
       );
     `);
+    // Add username column if missing
+    try { await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`); } catch (e) {}
+    // Allow NULL email for username-only login
+    try { await pool.query(`ALTER TABLE users ALTER COLUMN email DROP NOT NULL`); } catch (e) {}
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS modules (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        timer_minutes INTEGER NOT NULL DEFAULT 30,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Ensure modules table has all required columns (for existing tables)
+    const columnsToAdd = [
+      { col: 'timer_minutes', def: 'INTEGER NOT NULL DEFAULT 30' },
+      { col: 'created_at', def: 'TIMESTAMP DEFAULT NOW()' }
+    ];
+    for (const { col, def } of columnsToAdd) {
+      try {
+        await pool.query(`ALTER TABLE modules ADD COLUMN IF NOT EXISTS ${col} ${def}`);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // Add module_id column if it doesn't exist (for existing databases)
+    try {
+      await pool.query(`ALTER TABLE questions ADD COLUMN module_id INTEGER REFERENCES modules(id)`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS questions (
@@ -31,7 +65,8 @@ const pool = new Pool({
         question TEXT NOT NULL,
         options JSONB NOT NULL,
         correct INTEGER NOT NULL,
-        category TEXT NOT NULL
+        category TEXT NOT NULL,
+        module_id INTEGER REFERENCES modules(id)
       );
     `);
 

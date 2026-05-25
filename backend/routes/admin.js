@@ -15,21 +15,98 @@ const requireAdmin = (req, res, next) => {
 
 router.use(authMiddleware, requireAdmin);
 
-// GET all users
-router.get("/users", async (req, res) => {
+// ==================== MODULE ROUTES ====================
+
+// GET all modules
+router.get("/modules", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT id, name, email, role FROM users`);
+    const result = await pool.query(`
+      SELECT m.*, COUNT(q.id)::int AS question_count
+      FROM modules m
+      LEFT JOIN questions q ON q.module_id = m.id
+      GROUP BY m.id
+      ORDER BY m.created_at DESC
+    `);
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load modules" });
+  }
+});
+
+// POST create a new module
+router.post("/modules", async (req, res) => {
+  const { name, timer_minutes } = req.body;
+  if (!name || !timer_minutes) {
+    return res.status(400).json({ message: "Name and timer_minutes are required" });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO modules (name, timer_minutes) VALUES ($1, $2) RETURNING *`,
+      [name, timer_minutes]
+    );
+    res.status(201).json({ message: "Module created", module: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to create module" });
+  }
+});
+
+// PUT update a module
+router.put("/modules/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, timer_minutes } = req.body;
+  if (!name || !timer_minutes) {
+    return res.status(400).json({ message: "Name and timer_minutes are required" });
+  }
+  try {
+    const result = await pool.query(
+      `UPDATE modules SET name = $1, timer_minutes = $2 WHERE id = $3 RETURNING *`,
+      [name, timer_minutes, id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Module not found" });
+    }
+    res.json({ message: "Module updated", module: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update module" });
+  }
+});
+
+// DELETE a module
+router.delete("/modules/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Unlink questions from this module first
+    await pool.query(`UPDATE questions SET module_id = NULL WHERE module_id = $1`, [id]);
+    const result = await pool.query(`DELETE FROM modules WHERE id = $1`, [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Module not found" });
+    }
+    res.json({ message: "Module deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete module" });
+  }
+});
+
+// GET all users (includes username)
+router.get("/users", async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT id, name, username, email, role FROM users ORDER BY id`);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to load users" });
   }
 });
 
-// POST add a new user
+// POST add a new user (with username support)
 router.post("/users", async (req, res) => {
-  const { name, email, password, role } = req.body;
-  if (!name || !email || !password || !role) {
-    return res.status(400).json({ message: "Name, email, password, and role are required" });
+  const { name, username, email, password, role } = req.body;
+  if (!name || !password || !role) {
+    return res.status(400).json({ message: "Name, password, and role are required" });
   }
 
   if (!["admin", "user"].includes(role)) {
@@ -39,12 +116,52 @@ router.post("/users", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      `INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id`,
-      [name, email, hashedPassword, role]
+      `INSERT INTO users (name, username, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [name, username || null, email || null, hashedPassword, role]
     );
     res.status(201).json({ message: "User created", id: result.rows[0].id });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to create user" });
+  }
+});
+
+// PUT update a user (change name, username, email, role, or password)
+router.put("/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, username, email, role, password } = req.body;
+
+  try {
+    // Build dynamic update query
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (name !== undefined) { fields.push(`name = $${idx++}`); values.push(name); }
+    if (username !== undefined) { fields.push(`username = $${idx++}`); values.push(username); }
+    if (email !== undefined) { fields.push(`email = $${idx++}`); values.push(email); }
+    if (role !== undefined) { fields.push(`role = $${idx++}`); values.push(role); }
+    if (password !== undefined && password !== '') {
+      const hashed = await bcrypt.hash(password, 10);
+      fields.push(`password = $${idx++}`);
+      values.push(hashed);
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+
+    values.push(id);
+    const query = `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, name, username, email, role`;
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ message: "User updated", user: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update user" });
   }
 });
 
@@ -71,67 +188,67 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-// GET all questions
+// GET all questions (with module info)
 router.get("/questions", async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM questions ORDER BY category, id`);
+    const result = await pool.query(`
+      SELECT q.*, COALESCE(m.name, '') AS module_name
+      FROM questions q
+      LEFT JOIN modules m ON m.id = q.module_id
+      ORDER BY q.module_id, q.id
+    `);
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to load questions" });
   }
 });
 
-// POST add question
+// POST add question (with module_id support)
 router.post("/questions", async (req, res) => {
-  const { question, options, correct, category } = req.body;
+  const { question, options, correct, category, module_id } = req.body;
 
-  if (!question || !options || correct === undefined || !category) {
-    return res.status(400).json({ message: "All fields required" });
-  }
-
-  if (!["historical", "math", "logical"].includes(category)) {
-    return res.status(400).json({ message: "Invalid category" });
+  if (!question || !options || correct === undefined) {
+    return res.status(400).json({ message: "Question, options, and correct are required" });
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO questions (question, options, correct, category) VALUES ($1, $2, $3, $4) RETURNING id`,
-      [question, options, correct, category]
+      `INSERT INTO questions (question, options, correct, category, module_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [question, options, correct, category || 'general', module_id || null]
     );
     res.status(201).json({ message: "Question added", id: result.rows[0].id });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to add question" });
   }
 });
 
-// PUT update question
+// PUT update question (with module_id support)
 router.put("/questions/:id", async (req, res) => {
   const { id } = req.params;
-  const { question, options, correct, category } = req.body;
+  const { question, options, correct, category, module_id } = req.body;
 
-  if (!question || !options || correct === undefined || !category) {
-    return res.status(400).json({ message: "All fields required" });
-  }
-
-  if (!["historical", "math", "logical"].includes(category)) {
-    return res.status(400).json({ message: "Invalid category" });
+  if (!question || !options || correct === undefined) {
+    return res.status(400).json({ message: "Question, options, and correct are required" });
   }
 
   try {
     const result = await pool.query(
-      `UPDATE questions SET question = $1, options = $2, correct = $3, category = $4 WHERE id = $5`,
-      [question, options, correct, category, id]
+      `UPDATE questions SET question = $1, options = $2, correct = $3, category = $4, module_id = $5 WHERE id = $6`,
+      [question, options, correct, category || 'general', module_id || null, id]
     );
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Question not found" });
     }
     res.json({ message: "Question updated successfully" });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to update question" });
   }
 });
 
-// POST bulk upload
+// POST bulk upload (with module_id support)
 router.post("/questions/bulk", async (req, res) => {
   const { questions } = req.body;
 
@@ -145,16 +262,10 @@ router.post("/questions/bulk", async (req, res) => {
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
-    const { question, optionA, optionB, optionC, optionD, correct, category } = q;
+    const { question, optionA, optionB, optionC, optionD, correct, category, module_id } = q;
 
-    if (!question || !optionA || !optionB || !optionC || !optionD || correct === undefined || !category) {
+    if (!question || !optionA || !optionB || !optionC || !optionD || correct === undefined) {
       errors.push(`Row ${i + 1}: Missing required fields`);
-      errorCount++;
-      continue;
-    }
-
-    if (!["historical", "math", "logical"].includes(category)) {
-      errors.push(`Row ${i + 1}: Invalid category '${category}'`);
       errorCount++;
       continue;
     }
@@ -169,8 +280,8 @@ router.post("/questions/bulk", async (req, res) => {
 
     try {
       await pool.query(
-        `INSERT INTO questions (question, options, correct, category) VALUES ($1, $2, $3, $4)`,
-        [question, options, parseInt(correct), category]
+        `INSERT INTO questions (question, options, correct, category, module_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [question, options, parseInt(correct), category || 'general', module_id || null]
       );
       successCount++;
     } catch (err) {
@@ -263,6 +374,9 @@ router.get("/stats", async (req, res) => {
       `SELECT category, COUNT(*) as count FROM questions GROUP BY category`
     );
     stats.questionsByCategory = categories.rows;
+
+    const modules = await pool.query(`SELECT COUNT(*) FROM modules`);
+    stats.totalModules = parseInt(modules.rows[0].count);
 
     res.json(stats);
   } catch (err) {

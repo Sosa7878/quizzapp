@@ -47,7 +47,7 @@ function Dashboard() {
             ? 'text-white bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent' 
             : 'text-gray-800'
         }`}>
-          Welcome to the Quiz App
+          Mirësevini në Aplikacionin e Përgatitjes për Testime të Moduleve
         </h1>
 
         <div className="space-y-4">
@@ -59,7 +59,7 @@ function Dashboard() {
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
-            🚀 Start Quiz
+            🚀 Fillo Kuizin
           </button>
 
           <button
@@ -70,7 +70,7 @@ function Dashboard() {
                 : 'bg-purple-600 text-white hover:bg-purple-700'
             }`}
           >
-            📊 View Results
+            📊 Shiko Rezultatet
           </button>
 
           <button
@@ -81,7 +81,7 @@ function Dashboard() {
                 : 'bg-green-600 text-white hover:bg-green-700'
             }`}
           >
-            📚 View Notes
+            📚 Shiko Shënimet
           </button>
 
           {isAdmin && (
@@ -93,7 +93,7 @@ function Dashboard() {
                   : 'bg-gray-700 text-white hover:bg-gray-800'
               }`}
             >
-              ⚙️ Admin Panel
+              ⚙️ Paneli Admin
             </button>
           )}
         </div>
@@ -101,7 +101,7 @@ function Dashboard() {
         {isModern && (
           <div className="mt-8 text-center">
             <p className="text-white/70 text-sm">
-              ✨ Modern UI Theme Active
+              ✨ Dizajni Modern Aktiv
             </p>
           </div>
         )}

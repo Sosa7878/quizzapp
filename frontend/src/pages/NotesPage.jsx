@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import API_BASE_URL from "../config";
 
 function NotesPage() {
   const [notes, setNotes] = useState([]);
@@ -14,7 +15,7 @@ function NotesPage() {
 
   const loadNotes = async () => {
     try {
-      const response = await axios.get("https://quizzapp-ep6o.onrender.com/api/notes", {
+      const response = await axios.get(`${API_BASE_URL}/api/notes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotes(response.data);
@@ -28,7 +29,7 @@ function NotesPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-xl">Loading notes...</div>
+        <div className="text-xl">Duke ngarkuar shënimet...</div>
       </div>
     );
   }
@@ -36,15 +37,15 @@ function NotesPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Study Notes</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Shënime Studimi</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Notes List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4">
-              <h2 className="text-xl font-semibold mb-4">Available Notes</h2>
+              <h2 className="text-xl font-semibold mb-4">Shënime të Disponueshme</h2>
               {notes.length === 0 ? (
-                <p className="text-gray-500">No notes available</p>
+                <p className="text-gray-500">Nuk ka shënime</p>
               ) : (
                 <div className="space-y-2">
                   {notes.map(note => (
@@ -59,7 +60,7 @@ function NotesPage() {
                     >
                       <div className="font-medium">{note.title}</div>
                       <div className="text-sm text-gray-500 mt-1">
-                        Type: {note.type.toUpperCase()}
+                        Tipi: {note.type.toUpperCase()}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
                         {new Date(note.created_at).toLocaleDateString()}
@@ -88,13 +89,13 @@ function NotesPage() {
                   </div>
                   
                   <div className="text-sm text-gray-500 mb-4">
-                    Created: {new Date(selectedNote.created_at).toLocaleString()}
+                    Krijuar më: {new Date(selectedNote.created_at).toLocaleString()}
                   </div>
 
                   <div className="prose max-w-none">
                     {selectedNote.type === 'pdf' ? (
                       <div className="bg-gray-50 p-4 rounded border">
-                        <p className="text-gray-600 mb-2">PDF Content:</p>
+                        <p className="text-gray-600 mb-2">Përmbajtja PDF:</p>
                         <div className="whitespace-pre-wrap font-mono text-sm">
                           {selectedNote.content}
                         </div>
@@ -109,7 +110,7 @@ function NotesPage() {
                   {selectedNote.type === 'pdf' && (
                     <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
                       <p className="text-yellow-800 text-sm">
-                        📄 This is a PDF document. The content above shows the text content of the PDF.
+                        📄 Ky është një dokument PDF. Përmbajtja më sipër tregon përmbajtjen tekstuale të PDF.
                       </p>
                     </div>
                   )}
@@ -117,8 +118,8 @@ function NotesPage() {
               ) : (
                 <div className="text-center text-gray-500 py-12">
                   <div className="text-6xl mb-4">📚</div>
-                  <h3 className="text-xl font-medium mb-2">Select a note to view</h3>
-                  <p>Choose a note from the list on the left to read its content.</p>
+                  <h3 className="text-xl font-medium mb-2">Zgjidhni një shënim për ta parë</h3>
+                  <p>Zgjidhni një shënim nga lista në të majtë për të lexuar përmbajtjen.</p>
                 </div>
               )}
             </div>
@@ -131,7 +132,7 @@ function NotesPage() {
             onClick={() => window.history.back()}
             className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
           >
-            Back to Dashboard
+            Kthehu në Dashboard
           </button>
         </div>
       </div>

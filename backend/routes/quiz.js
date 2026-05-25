@@ -4,37 +4,61 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET quiz questions with random selection based on categories
+// GET all modules (public, auth only - not admin restricted)
+router.get('/modules', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT m.*, COUNT(q.id)::int AS question_count
+       FROM modules m
+       LEFT JOIN questions q ON q.module_id = m.id
+       GROUP BY m.id
+       ORDER BY m.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to load modules' });
+  }
+});
+
+// GET quiz questions for a specific module (or all if no module_id)
 router.get('/quiz', authMiddleware, async (req, res) => {
   try {
-    const getQuestionsByCategory = async (category, limit) => {
-      const result = await pool.query(
-        'SELECT * FROM questions WHERE category = $1 ORDER BY RANDOM() LIMIT $2',
-        [category, limit]
+    const moduleId = req.query.module_id;
+
+    let questions;
+    let timerMinutes = 120; // default 2 hours
+
+    if (moduleId) {
+      // Get module timer
+      const modResult = await pool.query('SELECT timer_minutes FROM modules WHERE id = $1', [moduleId]);
+      if (modResult.rows.length > 0) {
+        timerMinutes = modResult.rows[0].timer_minutes;
+      }
+      // Get questions for this module
+      const qResult = await pool.query(
+        'SELECT * FROM questions WHERE module_id = $1 ORDER BY RANDOM()',
+        [moduleId]
       );
-      return result.rows;
-    };
-
-    const [historical, math, logical] = await Promise.all([
-      getQuestionsByCategory('historical', 30),
-      getQuestionsByCategory('math', 30),
-      getQuestionsByCategory('logical', 40),
-    ]);
-
-    const allQuestions = [...historical, ...math, ...logical];
-
-    // Shuffle
-    for (let i = allQuestions.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+      questions = qResult.rows;
+    } else {
+      // Fallback: get all questions shuffled
+      const qResult = await pool.query('SELECT * FROM questions ORDER BY RANDOM()');
+      questions = qResult.rows;
     }
 
-    const formatted = allQuestions.map((q) => ({
+    // Shuffle
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+
+    const formatted = questions.map((q) => ({
       ...q,
       options: JSON.parse(q.options),
     }));
 
-    res.json(formatted);
+    res.json({ questions: formatted, timer_minutes: timerMinutes });
   } catch (err) {
     console.error('Error selecting questions:', err);
     res.status(500).json({ message: 'Failed to load questions.' });
