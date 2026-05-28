@@ -276,7 +276,7 @@ router.post("/questions/bulk", async (req, res) => {
       continue;
     }
 
-    const options = [optionA, optionB, optionC, optionD];
+    const options = JSON.stringify([optionA, optionB, optionC, optionD]);
 
     let resolvedModuleId = module_id;
     // If module_id is a name (not a number), look up the ID
