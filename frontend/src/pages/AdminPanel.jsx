@@ -712,6 +712,7 @@ function AdminPanel() {
                 <strong>Modulet:</strong>{' '}
                 {modules.map((m, i) => `${m.name} (ID: ${m.id})${i < modules.length - 1 ? ', ' : ''}`)}
               </div>
+              <textarea placeholder="Shkruani pyetjet në formatin e mësipërm, një për rresht..."
                 value={bulkUploadText} onChange={(e) => setBulkUploadText(e.target.value)}
                 className={`w-full p-2 border rounded h-32 ${isModern ? 'bg-white/20 text-white border-white/30' : ''}`} />
               <button onClick={handleBulkUpload} className="mt-3 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
