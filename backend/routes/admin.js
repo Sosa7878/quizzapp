@@ -278,10 +278,29 @@ router.post("/questions/bulk", async (req, res) => {
 
     const options = [optionA, optionB, optionC, optionD];
 
+    let resolvedModuleId = module_id;
+    // If module_id is a name (not a number), look up the ID
+    if (module_id && isNaN(parseInt(module_id))) {
+      try {
+        const modResult = await pool.query('SELECT id FROM modules WHERE LOWER(name) = LOWER($1)', [module_id]);
+        if (modResult.rows.length > 0) {
+          resolvedModuleId = modResult.rows[0].id;
+        } else {
+          errors.push(`Row ${i + 1}: Module "${module_id}" not found`);
+          errorCount++;
+          continue;
+        }
+      } catch (e) {
+        errors.push(`Row ${i + 1}: Error resolving module: ${e.message}`);
+        errorCount++;
+        continue;
+      }
+    }
+
     try {
       await pool.query(
-        `INSERT INTO questions (question, options, correct, category, module_id) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [question, options, parseInt(correct), category || 'general', module_id || null]
+        `INSERT INTO questions (question, options, correct, category, module_id) VALUES ($1, $2, $3, $4, $5)`,
+        [question, options, parseInt(correct), category || 'general', resolvedModuleId || null]
       );
       successCount++;
     } catch (err) {

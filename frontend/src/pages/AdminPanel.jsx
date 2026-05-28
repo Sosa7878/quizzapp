@@ -310,7 +310,7 @@ function AdminPanel() {
         if (!line) continue;
         const parts = line.split('|');
         if (parts.length < 7) {
-          alert(`Format i pavlefshëm në rreshtin ${i + 1}. Pritet: pyetja|opcioniA|opcioniB|opcioniC|opcioniD|saktë|moduli_id`);
+          alert(`Format i pavlefshëm në rreshtin ${i + 1}. Pritet: pyetja|opsioniA|opsioniB|opsioniC|opsioniD|saktë|moduli`);
           return;
         }
         questions.push({
@@ -703,12 +703,15 @@ function AdminPanel() {
             {/* Bulk Upload */}
             <div className={`mb-6 p-4 rounded ${isModern ? 'bg-white/5' : 'bg-blue-50'}`}>
               <h3 className={`text-lg font-semibold mb-3 ${isModern ? 'text-white' : ''}`}>Ngarko Pyetje në Masë</h3>
-              <p className={`text-sm mb-3 ${isModern ? 'text-white/70' : 'text-gray-600'}`}>
-                Formati: pyetja|opsioniA|opsioniB|opsioniC|opsioniD|saktë|moduli_id<br/>
-                Shembull: Sa është 2+2?|2|3|4|5|0|1<br/>
-                Saktë: 0=A, 1=B, 2=C, 3=D | moduli_id është numri i modulit nga skeda Modules
+              <p className={`text-sm mb-2 ${isModern ? 'text-white/70' : 'text-gray-600'}`}>
+                Formati: pyetja|opsioniA|opsioniB|opsioniC|opsioniD|saktë|moduli<br/>
+                Shembull: Sa është 2+2?|2|3|4|5|0|SHOP<br/>
+                Saktë: 0=A, 1=B, 2=C, 3=D | moduli mund të jetë <strong>emri</strong> ose ID
               </p>
-              <textarea placeholder="Shkruani pyetjet në formatin e mësipërm, një për rresht..."
+              <div className={`text-xs mb-3 p-2 rounded ${isModern ? 'bg-white/10 text-white/60' : 'bg-white text-gray-500 border'}`}>
+                <strong>Modulet:</strong>{' '}
+                {modules.map((m, i) => `${m.name} (ID: ${m.id})${i < modules.length - 1 ? ', ' : ''}`)}
+              </div>
                 value={bulkUploadText} onChange={(e) => setBulkUploadText(e.target.value)}
                 className={`w-full p-2 border rounded h-32 ${isModern ? 'bg-white/20 text-white border-white/30' : ''}`} />
               <button onClick={handleBulkUpload} className="mt-3 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
