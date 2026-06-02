@@ -74,6 +74,7 @@ const pool = new Pool({
       CREATE TABLE IF NOT EXISTS results (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
+        module_id INTEGER,
         answers JSONB,
         score INTEGER,
         total_questions INTEGER,
@@ -83,6 +84,7 @@ const pool = new Pool({
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    try { await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS module_id INTEGER`); } catch (e) {}
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS notes (

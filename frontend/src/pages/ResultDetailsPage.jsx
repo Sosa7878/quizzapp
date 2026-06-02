@@ -24,8 +24,10 @@ function ResultDetailsPage() {
       
       setResultData(response.data);
       
-      // Load questions for detailed review
-      const questionsResponse = await axios.get(`${API_BASE_URL}/api/quiz`, {
+      // Load questions for the correct module
+      const moduleId = response.data.module_id;
+      const url = moduleId ? `/api/quiz?module_id=${moduleId}` : `/api/quiz`;
+      const questionsResponse = await axios.get(`${API_BASE_URL}${url}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const qs = Array.isArray(questionsResponse.data) ? questionsResponse.data : (questionsResponse.data.questions || []);

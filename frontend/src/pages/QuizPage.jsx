@@ -18,7 +18,6 @@ function QuizPage() {
   const [modules, setModules] = useState([]);
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const [modulesLoading, setModulesLoading] = useState(true);
-
   const token = localStorage.getItem("token");
   const api = axios.create({
     baseURL: API_BASE_URL,
@@ -119,7 +118,8 @@ function QuizPage() {
       const response = await api.post("/api/quiz/submit", {
         answers: answersArray,
         questions: questions,
-        timeTaken: timeTaken
+        timeTaken: timeTaken,
+        module_id: parseInt(selectedModuleId)
       });
       navigate("/results", {
         state: {

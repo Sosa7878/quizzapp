@@ -67,7 +67,7 @@ router.get('/quiz', authMiddleware, async (req, res) => {
 
 // POST submit quiz
 router.post('/quiz/submit', authMiddleware, async (req, res) => {
-  const { answers, questions, timeTaken } = req.body;
+  const { answers, questions, timeTaken, module_id } = req.body;
   const userId = req.user.id;
 
   if (!answers || !questions) {
@@ -89,10 +89,10 @@ router.post('/quiz/submit', authMiddleware, async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO results (user_id, answers, score, total_questions, percentage, passed, time_taken, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      `INSERT INTO results (user_id, answers, score, total_questions, percentage, passed, time_taken, created_at, module_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
        RETURNING id`,
-      [userId, JSON.stringify(answers), score, totalQuestions, percentage, passed, timeUsed]
+      [userId, JSON.stringify(answers), score, totalQuestions, percentage, passed, timeUsed, module_id || null]
     );
 
     res.json({
@@ -102,6 +102,7 @@ router.post('/quiz/submit', authMiddleware, async (req, res) => {
       percentage,
       passed,
       timeTaken: timeUsed,
+      module_id: module_id || null,
       message: passed
         ? 'Urime! Ju kaluat testin!'
         : 'Nuk arritët të kaloni testin këtë herë. Vazhdoni të studijoni!',
@@ -136,6 +137,7 @@ router.get('/results', authMiddleware, async (req, res) => {
       percentage: r.percentage,
       passed: r.passed,
       timeTaken: r.time_taken,
+      module_id: r.module_id,
       answers: JSON.parse(r.answers),
       createdAt: r.created_at,
       message: r.passed
@@ -154,7 +156,7 @@ router.get('/results/history', authMiddleware, async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT id, score, total_questions, percentage, passed, time_taken, created_at 
+      `SELECT id, score, total_questions, percentage, passed, time_taken, created_at, module_id
        FROM results WHERE user_id = $1 ORDER BY id DESC`,
       [userId]
     );
@@ -195,6 +197,7 @@ router.get('/results/:resultId', authMiddleware, async (req, res) => {
       percentage: r.percentage,
       passed: r.passed,
       timeTaken: r.time_taken,
+      module_id: r.module_id,
       answers: JSON.parse(r.answers),
       createdAt: r.created_at,
       message: r.passed
