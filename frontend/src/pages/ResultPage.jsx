@@ -36,9 +36,10 @@ function ResultPage() {
         setAnswers(response.data.answers || []);
         
         // For displaying questions, we need to get them from the quiz endpoint
-        // In a production app, you'd store the specific questions used in each quiz
         try {
-          const questionsResponse = await axios.get(`${API_BASE_URL}/api/quiz`, {
+          const moduleId = response.data.module_id;
+          const url = moduleId ? `/api/quiz?module_id=${moduleId}` : `/api/quiz`;
+          const questionsResponse = await axios.get(`${API_BASE_URL}${url}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const qs = Array.isArray(questionsResponse.data) ? questionsResponse.data : (questionsResponse.data.questions || []);
